@@ -59,18 +59,24 @@ func BuildURL(embyPath string) (string, error) {
 		ossPath = "/" + ossPath
 	}
 
-	// 3. URL 编码路径 (处理中文等特殊字符)
-	encodedPath := url.PathEscape(ossPath)
+	// 3. 如果配置了 bucket，将其添加到路径前面
+	fullPath := ossPath
+	if cfg.Bucket != "" {
+		fullPath = "/" + cfg.Bucket + ossPath
+	}
+
+	// 4. URL 编码路径 (处理中文等特殊字符)
+	encodedPath := url.PathEscape(fullPath)
 	// 修复: PathEscape 会将 / 也编码，需要还原
 	encodedPath = strings.ReplaceAll(encodedPath, "%2F", "/")
 
-	// 4. 构建基础 URL
+	// 5. 构建基础 URL
 	baseURL := cfg.Endpoint + encodedPath
 
-	// 5. 如果启用 CDN 鉴权，添加 auth_key 参数
+	// 6. 如果启用 CDN 鉴权，添加 auth_key 参数
 	if cfg.CdnAuth.Enable {
 		authKey := GenerateAuthKey(
-			ossPath, // 注意: 签名使用原始路径，不是编码后的
+			fullPath, // 注意: 签名使用完整路径(含bucket)，不是编码后的
 			cfg.CdnAuth.PrivateKey,
 			cfg.CdnAuth.TTL,
 			cfg.CdnAuth.UID,
