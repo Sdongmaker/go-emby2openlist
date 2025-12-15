@@ -151,7 +151,7 @@ func Redirect2OpenlistLink(c *gin.Context) {
 			c.Header(cache.HeaderKeyExpired, cache.Duration(time.Minute*10))
 
 			logs.Success("重定向到 OSS: %s", ossUrl)
-			c.Redirect(http.StatusTemporaryRedirect, ossUrl)
+			c.Redirect(http.StatusFound, ossUrl)
 			return
 		}
 	}
