@@ -38,6 +38,9 @@ type CdnAuth struct {
 	UID string `yaml:"uid"`
 	// UseRandom 是否使用随机数增强安全性
 	UseRandom bool `yaml:"use-random"`
+	// RandomLength 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
+	// 默认值：6（适配腾讯云）
+	RandomLength int `yaml:"random-length"`
 }
 
 // ApiKeyConfig 源站验证 API Key 配置
@@ -105,7 +108,11 @@ func (o *Oss) Init() error {
 		if o.CdnAuth.UID == "" {
 			o.CdnAuth.UID = "0"
 		}
-		logs.Success("CDN Type-A 鉴权已启用, TTL: %d 秒", o.CdnAuth.TTL)
+		if o.CdnAuth.RandomLength <= 0 {
+			o.CdnAuth.RandomLength = 6 // 默认6位（适配腾讯云）
+		}
+		logs.Success("CDN Type-A 鉴权已启用, TTL: %d 秒, 随机数: %v (长度: %d)",
+			o.CdnAuth.TTL, o.CdnAuth.UseRandom, o.CdnAuth.RandomLength)
 	}
 
 	// 验证 API Key 配置

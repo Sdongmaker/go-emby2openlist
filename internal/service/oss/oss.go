@@ -16,16 +16,23 @@ import (
 // 算法: sign = {timestamp}-{rand}-{uid}-{md5hash}
 // 其中: md5hash = md5("{uri}-{timestamp}-{rand}-{uid}-{privateKey}")
 // 完全按照 Python Reqable 脚本的实现逻辑
-func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool) string {
+// randomLength: 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
+func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool, randomLength int) string {
 	// 1. 生成时间戳 (当前时间 + TTL)
 	// Python: expire_time = now_ts + ttl
 	timestamp := time.Now().Unix() + ttl
 
 	// 2. 生成随机字符串
 	// Python: rand_str = "0"
+	// 腾讯云: 6位字母数字混合 (如 "q87NIR")
+	// 阿里云: 32位十六进制 (如 "52df74f89e7ed1369ffbc0204fd1f9bc")
 	rand := "0"
 	if useRandom {
-		rand = randoms.RandomHex(32)
+		if randomLength <= 0 {
+			randomLength = 6 // 默认6位（腾讯云）
+		}
+		// 使用字母数字混合的随机数（适配腾讯云）
+		rand = randoms.RandomAlphaNum(randomLength)
 	}
 
 	// 3. 构造签名字符串
@@ -106,6 +113,7 @@ func BuildURL(embyPath string) (string, error) {
 			cfg.CdnAuth.TTL,
 			cfg.CdnAuth.UID,
 			cfg.CdnAuth.UseRandom,
+			cfg.CdnAuth.RandomLength, // 随机数长度
 		)
 		baseURL += "?sign=" + authKey
 	}
