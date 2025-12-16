@@ -15,12 +15,14 @@ import (
 // GenerateAuthKey 生成 Type-A CDN 鉴权的 sign 参数
 // 算法: sign = {timestamp}-{rand}-{uid}-{md5hash}
 // 其中: md5hash = md5("{uri}-{timestamp}-{rand}-{uid}-{privateKey}")
-// 完全按照 Python Reqable 脚本的实现逻辑
+// 完全按照腾讯云 Type-A 标准实现
+// 注意：timestamp 是当前时间，不是过期时间！CDN 会自动加上有效时长判断
 // randomLength: 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
 func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool, randomLength int) string {
-	// 1. 生成时间戳 (当前时间 + TTL)
-	// Python: expire_time = now_ts + ttl
-	timestamp := time.Now().Unix() + ttl
+	// 1. 生成时间戳（当前时间，不是过期时间！）
+	// 腾讯云文档：timestamp = 生成签名的时间
+	// CDN 验证逻辑：timestamp + 控制台配置的有效时长 > 当前时间
+	timestamp := time.Now().Unix()
 
 	// 2. 生成随机字符串
 	// Python: rand_str = "0"
@@ -50,8 +52,10 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 	// 格式: time-rand-uid-md5hash
 	authKey := fmt.Sprintf("%d-%s-%s-%s", timestamp, rand, uid, md5hash)
 
-	// 详细调试日志（与 Python 脚本输出格式一致）
+	// 详细调试日志
 	logs.Info("[Type A] path: %s", uri)
+	logs.Info("[Type A] timestamp: %d (当前时间，有效期: %d秒)", timestamp, ttl)
+	logs.Info("[Type A] expire_time: %d (timestamp + ttl)", timestamp+ttl)
 	logs.Info("[Type A] raw_str: %s", sstring)
 	logs.Info("[Type A] md5: %s", md5hash)
 	logs.Info("[Type A] sign: %s", authKey)
