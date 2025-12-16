@@ -90,29 +90,39 @@ func BuildURL(embyPath string) (string, error) {
 		ossPath = strings.ReplaceAll(ossPath, "//", "/")
 	}
 
-	// 3. 构建用于签名的路径（未编码）
-	// 注意：这个路径必须与 CDN 实际接收到的请求路径完全一致
-	signPath := ossPath
-	if cfg.Bucket != "" {
-		// 如果配置了 bucket，将其添加到路径前面
-		signPath = "/" + cfg.Bucket + ossPath
+	// 3. 先解码路径（防止路径已经是部分或完全编码的状态）
+	// 这确保我们得到的是原始的、未编码的路径
+	decodedOssPath, err := url.QueryUnescape(ossPath)
+	if err != nil {
+		logs.Warn("路径解码失败，使用原始路径: %v", err)
+		decodedOssPath = ossPath
 	}
 
-	// 4. 构建用于 URL 的路径（需要编码特殊字符）
-	// URL 编码路径 (处理中文等特殊字符)
+	// 4. 构建用于签名的路径（完全未编码的原始路径）
+	// 注意：腾讯云 CDN 会将收到的编码 URI 解码后再验证签名
+	signPath := decodedOssPath
+	if cfg.Bucket != "" {
+		// 如果配置了 bucket，将其添加到路径前面
+		signPath = "/" + cfg.Bucket + decodedOssPath
+	}
+
+	// 5. 构建用于 URL 的路径（完整编码所有特殊字符）
+	// URL 编码路径 (处理中文、空格、括号等所有特殊字符)
 	encodedPath := url.PathEscape(signPath)
 	// 修复: PathEscape 会将 / 也编码，需要还原
 	encodedPath = strings.ReplaceAll(encodedPath, "%2F", "/")
 
-	// 5. 构建基础 URL
+	// 6. 构建基础 URL
 	baseURL := cfg.Endpoint + encodedPath
 
-	// 6. 如果启用 CDN 鉴权，添加 sign 参数
+	// 7. 如果启用 CDN 鉴权，添加 sign 参数
 	if cfg.CdnAuth.Enable {
-		// 重要：签名使用未编码的路径（signPath），而不是编码后的路径
-		// 这与 Python 脚本中的 request.path 保持一致（纯路径，不包含 query）
+		// 重要：签名使用完全解码的原始路径（signPath），而不是编码后的路径
+		// 因为腾讯云 CDN 会先解码收到的 URI，再用解码后的路径验证签名
+		logs.Info("[Type A] 原始路径: %s", ossPath)
+		logs.Info("[Type A] 解码后路径: %s", decodedOssPath)
 		logs.Info("[Type A] 签名路径 (未编码): %s", signPath)
-		logs.Info("[Type A] URL路径 (已编码): %s", encodedPath)
+		logs.Info("[Type A] URL路径 (完整编码): %s", encodedPath)
 
 		authKey := GenerateAuthKey(
 			signPath, // 签名使用未编码的路径
