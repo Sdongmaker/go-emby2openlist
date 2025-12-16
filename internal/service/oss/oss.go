@@ -23,9 +23,9 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 	// 腾讯云文档：timestamp = 生成签名的时间
 	// CDN 验证逻辑：timestamp + 控制台配置的有效时长 > 当前时间
 	//
-	// 注意：如果 Docker 容器时区是 CST (UTC+8)，需要减去 8 小时
-	// 因为腾讯云 CDN 验证时使用 UTC 时间
-	timestamp := time.Now().Unix() - 28800  // 临时方案：减去 8 小时 (28800 秒)
+	// 重要：Docker 容器必须使用 UTC 时区 (TZ=UTC)
+	// time.Now().Unix() 会自动返回 UTC 时间戳
+	timestamp := time.Now().Unix()
 
 	// 2. 生成随机字符串
 	// Python: rand_str = "0"
