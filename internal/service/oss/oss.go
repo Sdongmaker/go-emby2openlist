@@ -24,15 +24,21 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 	// CDN 验证逻辑：timestamp + 控制台配置的有效时长 > 当前时间
 
 	// 获取当前时间戳
-	nowTs := time.Now().Unix()
-	timestamp := nowTs
+	nowLocal := time.Now()
+	nowUTC := nowLocal.UTC()
+	rawTimestamp := nowUTC.Unix()
+
+	// 时区补偿：如果服务器时间快了 8 小时，需要减去 28800 秒
+	// 这通常发生在容器或服务器时区配置不正确的情况下
+	timestamp := rawTimestamp - 28800
 
 	// 时间戳诊断信息
 	logs.Info("========== 时间戳诊断 ==========")
-	logs.Info("[当前时间戳] %d", nowTs)
-	logs.Info("[当前时间 UTC] %s", time.Unix(nowTs, 0).UTC().Format("2006-01-02 15:04:05"))
-	logs.Info("[当前时间 Local] %s", time.Unix(nowTs, 0).Format("2006-01-02 15:04:05"))
-	logs.Info("[使用时间戳] %d", timestamp)
+	logs.Info("[本地时间] %s (时区: %s)", nowLocal.Format("2006-01-02 15:04:05"), nowLocal.Location())
+	logs.Info("[UTC 时间] %s", nowUTC.Format("2006-01-02 15:04:05"))
+	logs.Info("[原始时间戳] %d", rawTimestamp)
+	logs.Info("[补偿后时间戳] %d (减去 8 小时)", timestamp)
+	logs.Info("[补偿后时间] %s (UTC)", time.Unix(timestamp, 0).UTC().Format("2006-01-02 15:04:05"))
 	logs.Info("[有效期至] %s (UTC)", time.Unix(timestamp+ttl, 0).UTC().Format("2006-01-02 15:04:05"))
 	logs.Info("=================================")
 
