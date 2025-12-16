@@ -46,28 +46,17 @@ func encodePathForCDN(path string) string {
 // randomLength: 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
 func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool, randomLength int) string {
 	// 1. 计算时间戳（当前时间）
-	// 重要：根据腾讯云官方 Demo (generate_url.py)
-	// Type A: ts = now (当前时间，不是 now + ttl)
-	// CDN 会根据控制台配置的 TTL 来验证有效期
-
-	// 获取当前时间戳
-	nowLocal := time.Now()
-	nowUTC := nowLocal.UTC()
-	rawTimestamp := nowUTC.Unix()
-
-	// 时区补偿：如果服务器时间快了 8 小时，需要减去 28800 秒
-	timestamp := rawTimestamp - 28800
+	// 重要：根据测试代码和腾讯云官方 Demo
+	// 直接使用当前时间戳，不做时区补偿
+	timestamp := time.Now().Unix()
 
 	// 时间戳诊断信息
 	logs.Info("========== 时间戳诊断 ==========")
-	logs.Info("[本地时间] %s (时区: %s)", nowLocal.Format("2006-01-02 15:04:05"), nowLocal.Location())
-	logs.Info("[UTC 时间] %s", nowUTC.Format("2006-01-02 15:04:05"))
-	logs.Info("[原始时间戳] %d", rawTimestamp)
-	logs.Info("[当前时间戳] %d (减去 8 小时)", timestamp)
-	logs.Info("[当前时间] %s (UTC)", time.Unix(timestamp, 0).UTC().Format("2006-01-02 15:04:05"))
+	logs.Info("[当前时间戳] %d", timestamp)
+	logs.Info("[当前时间] %s", time.Unix(timestamp, 0).Format("2006-01-02 15:04:05"))
 	logs.Info("[TTL] %d 秒 (在 CDN 控制台配置)", ttl)
-	logs.Info("[过期时间] %s (UTC)", time.Unix(timestamp+ttl, 0).UTC().Format("2006-01-02 15:04:05"))
-	logs.Info("[重要说明] 官方 Demo: ts = now (当前时间)")
+	logs.Info("[过期时间] %s", time.Unix(timestamp+ttl, 0).Format("2006-01-02 15:04:05"))
+	logs.Info("[重要说明] 使用当前时间戳，无时区补偿")
 	logs.Info("=================================")
 
 	// 2. 生成随机字符串
@@ -84,9 +73,8 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 	}
 
 	// 3. 构造签名字符串
-	// 腾讯云官方 Demo: sign = hashlib.md5('%s-%s-%s-%s-%s' % (path, ts, rand_str, 0, key)).hexdigest()
-	// 重要：使用当前时间 (ts)，不是过期时间
-	// 格式: path-ts-rand-uid-key
+	// 格式: uri-timestamp-rand-uid-privateKey
+	// 关键：uri 必须是编码后的路径
 	sstring := fmt.Sprintf("%s-%d-%s-%s-%s", uri, timestamp, rand, uid, privateKey)
 
 	// 详细输出所有参与计算的值
