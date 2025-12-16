@@ -41,27 +41,34 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 	}
 
 	// 3. 构造签名字符串
-	// Python: raw_str = f"{path}-{expire_time}-{rand_str}-{uid}-{secret_key}"
-	// 格式: path-time-rand-uid-key
+	// 腾讯云文档：md5hash = md5sum(uri-timestamp-rand-uid-pkey)
+	// 格式: uri-timestamp-rand-uid-pkey
 	sstring := fmt.Sprintf("%s-%d-%s-%s-%s", uri, timestamp, rand, uid, privateKey)
 
+	// 详细输出所有参与计算的值
+	logs.Info("========== Type-A 签名计算详情 ==========")
+	logs.Info("[1] uri (资源访问路径，必须以/开头): %s", uri)
+	logs.Info("[2] timestamp (当前时间戳): %d", timestamp)
+	logs.Info("[3] rand (随机字符串): %s", rand)
+	logs.Info("[4] uid (用户ID): %s", uid)
+	logs.Info("[5] pkey (密钥): %s", privateKey)
+	logs.Info("----------------------------------------")
+	logs.Info("[拼接字符串] uri-timestamp-rand-uid-pkey")
+	logs.Info("[原始字符串] %s", sstring)
+
 	// 4. 计算 MD5
-	// Python: md5_signature = hashlib.md5(raw_str.encode('utf-8')).hexdigest()
+	// 腾讯云文档：md5hash = md5sum(uri-timestamp-rand-uid-pkey)
 	hash := md5.Sum([]byte(sstring))
 	md5hash := fmt.Sprintf("%x", hash)
+	logs.Info("[MD5 结果] %s", md5hash)
 
 	// 5. 构造最终参数值
-	// Python: auth_value = f"{expire_time}-{rand_str}-{uid}-{md5_signature}"
-	// 格式: time-rand-uid-md5hash
+	// 格式: timestamp-rand-uid-md5hash
 	authKey := fmt.Sprintf("%d-%s-%s-%s", timestamp, rand, uid, md5hash)
-
-	// 详细调试日志
-	logs.Info("[Type A] path: %s", uri)
-	logs.Info("[Type A] timestamp: %d (当前时间，有效期: %d秒)", timestamp, ttl)
-	logs.Info("[Type A] expire_time: %d (timestamp + ttl)", timestamp+ttl)
-	logs.Info("[Type A] raw_str: %s", sstring)
-	logs.Info("[Type A] md5: %s", md5hash)
-	logs.Info("[Type A] sign: %s", authKey)
+	logs.Info("----------------------------------------")
+	logs.Info("[最终签名] sign=%s", authKey)
+	logs.Info("[格式说明] timestamp-rand-uid-md5hash")
+	logs.Info("==========================================")
 
 	return authKey
 }
