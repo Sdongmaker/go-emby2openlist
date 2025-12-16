@@ -58,10 +58,10 @@ func main() {
 		fmt.Printf("   ✅ 生成的URL:\n")
 		fmt.Printf("      %s\n", finalURL)
 
-		// 检查URL是否包含auth_key
+		// 检查URL是否包含sign参数
 		if config.C.Oss.CdnAuth.Enable {
 			if len(finalURL) > 200 {
-				fmt.Println("   ✅ CDN鉴权已添加 (包含auth_key参数)")
+				fmt.Println("   ✅ CDN鉴权已添加 (包含sign参数)")
 			}
 		}
 	}

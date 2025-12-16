@@ -73,7 +73,7 @@ func BuildURL(embyPath string) (string, error) {
 	// 5. 构建基础 URL
 	baseURL := cfg.Endpoint + encodedPath
 
-	// 6. 如果启用 CDN 鉴权，添加 auth_key 参数
+	// 6. 如果启用 CDN 鉴权，添加 sign 参数
 	if cfg.CdnAuth.Enable {
 		authKey := GenerateAuthKey(
 			fullPath, // 注意: 签名使用完整路径(含bucket)，不是编码后的
@@ -82,7 +82,7 @@ func BuildURL(embyPath string) (string, error) {
 			cfg.CdnAuth.UID,
 			cfg.CdnAuth.UseRandom,
 		)
-		baseURL += "?auth_key=" + authKey
+		baseURL += "?sign=" + authKey
 	}
 
 	logs.Success("OSS URL 生成成功: %s", baseURL)
