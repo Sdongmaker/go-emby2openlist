@@ -143,15 +143,22 @@ func BuildURL(embyPath string) (string, error) {
 
 	// 7. 如果启用 CDN 鉴权，添加 sign 参数
 	if cfg.CdnAuth.Enable {
-		// 重要：签名使用完全解码的原始路径（signPath），而不是编码后的路径
-		// 因为腾讯云 CDN 会先解码收到的 URI，再用解码后的路径验证签名
+		// 决定签名时使用哪种路径格式
+		// 方式 A: 使用未编码的原始路径（signPath）
+		// 方式 B: 使用编码后的路径（encodedPath）
+		// 当前使用：方式 B（编码后的路径）
+
+		uriForSign := encodedPath  // 使用编码路径（当前配置）
+		// uriForSign := signPath  // 使用未编码路径（备选）
+
 		logs.Info("[Type A] 原始路径: %s", ossPath)
 		logs.Info("[Type A] 解码后路径: %s", decodedOssPath)
 		logs.Info("[Type A] 签名路径 (未编码): %s", signPath)
 		logs.Info("[Type A] URL路径 (完整编码): %s", encodedPath)
+		logs.Info("[Type A] 用于签名的 URI: %s", uriForSign)
 
 		authKey := GenerateAuthKey(
-			signPath, // 签名使用未编码的路径
+			uriForSign, // 可能是编码或未编码
 			cfg.CdnAuth.PrivateKey,
 			cfg.CdnAuth.TTL,
 			cfg.CdnAuth.UID,
