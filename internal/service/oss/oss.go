@@ -2,8 +2,10 @@ package oss
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,66 +47,57 @@ func encodePathForCDN(path string) string {
 // 官方代码: ts = now (当前时间)
 // randomLength: 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
 func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool, randomLength int) string {
-	// 1. 计算时间戳（当前时间）
-	// 重要：根据测试代码和腾讯云官方 Demo
-	// 直接使用当前时间戳，不做时区补偿
+	// ==================== 步骤1：准备参数 ====================
+	// 严格按照测试代码的方式
 	timestamp := time.Now().Unix()
+	timestampStr := strconv.FormatInt(timestamp, 10)  // 使用 strconv.FormatInt（与测试代码一致）
 
 	// 时间戳诊断信息
 	logs.Info("========== 时间戳诊断 ==========")
-	logs.Info("[当前时间戳] %d", timestamp)
+	logs.Info("[当前时间戳] %s", timestampStr)
 	logs.Info("[当前时间] %s", time.Unix(timestamp, 0).Format("2006-01-02 15:04:05"))
-	logs.Info("[TTL] %d 秒 (在 CDN 控制台配置)", ttl)
-	logs.Info("[过期时间] %s", time.Unix(timestamp+ttl, 0).Format("2006-01-02 15:04:05"))
-	logs.Info("[重要说明] 使用当前时间戳，无时区补偿")
+	logs.Info("[TTL] %d 秒", ttl)
 	logs.Info("=================================")
 
-	// 2. 生成随机字符串
-	// Python: rand_str = "0"
-	// 腾讯云: 6位字母数字混合 (如 "q87NIR")
-	// 阿里云: 32位十六进制 (如 "52df74f89e7ed1369ffbc0204fd1f9bc")
-	rand := "0"
+	// ==================== 步骤2：生成随机字符串 ====================
+	randStr := "0"
 	if useRandom {
 		if randomLength <= 0 {
-			randomLength = 6 // 默认6位（腾讯云）
+			randomLength = 6 // 默认6位
 		}
-		// 使用字母数字混合的随机数（适配腾讯云）
-		rand = randoms.RandomAlphaNum(randomLength)
+		randStr = randoms.RandomAlphaNum(randomLength)
 	}
 
-	// 3. 构造签名字符串
-	// 格式: uri-timestamp-rand-uid-privateKey
-	// 关键：uri 必须是编码后的路径
-	sstring := fmt.Sprintf("%s-%d-%s-%s-%s", uri, timestamp, rand, uid, privateKey)
+	// ==================== 步骤3：计算签名 (使用编码后的路径) ====================
+	// 严格按照测试代码的 calculateMD5Hash 函数
+	// 格式: uri-timestampStr-randStr-uid-pkey
+	rawSignStr := fmt.Sprintf("%s-%s-%s-%s-%s", uri, timestampStr, randStr, uid, privateKey)
 
-	// 详细输出所有参与计算的值
+	// 详细输出
 	logs.Info("========== Type-A 签名计算详情 ==========")
-	logs.Info("[1] uri (已编码的资源路径，必须以/开头): %s", uri)
-	logs.Info("    ⚠️ 注意：uri 必须是编码后的路径（空格→%%20，中文→UTF-8编码）")
-	logs.Info("[2] timestamp (当前时间戳): %d", timestamp)
-	logs.Info("[3] rand (随机字符串): %s", rand)
-	logs.Info("[4] uid (用户ID): %s", uid)
-	logs.Info("[5] pkey (密钥): %s", privateKey)
+	logs.Info("[1] uri (已编码): %s", uri)
+	logs.Info("[2] timestamp: %s", timestampStr)
+	logs.Info("[3] rand: %s", randStr)
+	logs.Info("[4] uid: %s", uid)
+	logs.Info("[5] pkey: %s", privateKey)
 	logs.Info("----------------------------------------")
 	logs.Info("[拼接格式] uri-timestamp-rand-uid-pkey")
-	logs.Info("[原始字符串] %s", sstring)
+	logs.Info("[原始字符串] %s", rawSignStr)
 
-	// 4. 计算 MD5
-	// 腾讯云官方: md5_signature = hashlib.md5(raw_str).hexdigest()
-	hash := md5.Sum([]byte(sstring))
-	md5hash := fmt.Sprintf("%x", hash)
+	// 计算 MD5（严格按照测试代码方式）
+	md5Hash := md5.New()
+	md5Hash.Write([]byte(rawSignStr))
+	md5hash := hex.EncodeToString(md5Hash.Sum(nil))  // 使用 hex.EncodeToString（与测试代码一致）
 	logs.Info("[MD5 结果] %s", md5hash)
 
-	// 5. 构造最终参数值
-	// 腾讯云官方: '%s-%s-%s-%s' % (ts, rand_str, 0, sign)
+	// ==================== 步骤4：生成签名参数 ====================
 	// 格式: timestamp-rand-uid-md5hash
-	authKey := fmt.Sprintf("%d-%s-%s-%s", timestamp, rand, uid, md5hash)
+	signParam := fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, uid, md5hash)
 	logs.Info("----------------------------------------")
-	logs.Info("[最终签名] sign=%s", authKey)
-	logs.Info("[格式说明] timestamp-rand-uid-md5hash")
+	logs.Info("[最终签名] sign=%s", signParam)
 	logs.Info("==========================================")
 
-	return authKey
+	return signParam
 }
 
 // BuildURL 根据 Emby 路径构建完整的 OSS URL (带 CDN 鉴权)
