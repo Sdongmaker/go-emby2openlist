@@ -70,6 +70,12 @@ func BuildURL(embyPath string) (string, error) {
 		ossPath = "/" + ossPath
 	}
 
+	// 2.5. 清理路径中的双斜杠（修复路径映射导致的问题）
+	// 将连续的多个 / 替换为单个 /
+	for strings.Contains(ossPath, "//") {
+		ossPath = strings.ReplaceAll(ossPath, "//", "/")
+	}
+
 	// 3. 构建用于签名的路径（未编码）
 	// 注意：这个路径必须与 CDN 实际接收到的请求路径完全一致
 	signPath := ossPath
