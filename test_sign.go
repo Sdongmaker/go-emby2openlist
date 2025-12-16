@@ -50,8 +50,10 @@ func main() {
 	expireTime := nowTs + ttl
 
 	fmt.Println("时间戳计算:")
-	fmt.Printf("  当前时间: %d\n", nowTs)
-	fmt.Printf("  过期时间: %d (当前时间 + %d秒)\n\n", expireTime, ttl)
+	fmt.Printf("  当前时间: %d (这个值会写入 sign)\n", nowTs)
+	fmt.Printf("  过期时间: %d (当前时间 + %d秒)\n", expireTime, ttl)
+	fmt.Printf("  注意: sign 中的 timestamp 是当前时间，不是过期时间！\n")
+	fmt.Printf("  腾讯云 CDN 会自动用 timestamp + 控制台配置的有效时长来验证\n\n")
 
 	// 2. 生成随机数
 	var randStr string
@@ -64,11 +66,12 @@ func main() {
 	}
 
 	// 3. 构造签名字符串
-	// Python: raw_str = f"{path}-{expire_time}-{rand_str}-{uid}-{secret_key}"
-	rawStr := fmt.Sprintf("%s-%d-%s-%s-%s", path, expireTime, randStr, uid, secretKey)
+	// 腾讯云标准：使用当前时间（生成时间），不是过期时间
+	// raw_str = f"{path}-{current_time}-{rand_str}-{uid}-{secret_key}"
+	rawStr := fmt.Sprintf("%s-%d-%s-%s-%s", path, nowTs, randStr, uid, secretKey)
 
 	fmt.Println("签名字符串 (raw_str):")
-	fmt.Printf("  格式: path-time-rand-uid-key\n")
+	fmt.Printf("  格式: path-当前时间-rand-uid-key\n")
 	fmt.Printf("  内容: %s\n\n", rawStr)
 
 	// 4. 计算 MD5
@@ -80,11 +83,12 @@ func main() {
 	fmt.Printf("  MD5: %s\n\n", md5Signature)
 
 	// 5. 构造最终签名
-	// Python: auth_value = f"{expire_time}-{rand_str}-{uid}-{md5_signature}"
-	authValue := fmt.Sprintf("%d-%s-%s-%s", expireTime, randStr, uid, md5Signature)
+	// 使用当前时间（不是过期时间）
+	// auth_value = f"{current_time}-{rand_str}-{uid}-{md5_signature}"
+	authValue := fmt.Sprintf("%d-%s-%s-%s", nowTs, randStr, uid, md5Signature)
 
 	fmt.Println("最终签名 (sign 参数值):")
-	fmt.Printf("  格式: time-rand-uid-md5hash\n")
+	fmt.Printf("  格式: 当前时间-rand-uid-md5hash\n")
 	fmt.Printf("  sign=%s\n\n", authValue)
 
 	// 6. 生成完整 URL
@@ -92,10 +96,11 @@ func main() {
 	fmt.Println("完整 URL:")
 	fmt.Printf("  %s\n\n", fullURL)
 
-	fmt.Println("===== 对比检查清单 =====")
-	fmt.Println("与腾讯云示例对比:")
-	fmt.Println("  1. 随机数格式: 6位字母数字混合 (如 'q87NIR')")
-	fmt.Println("  2. sign 格式: time-rand-uid-md5hash")
-	fmt.Println("\n如果启用了随机数，每次生成的签名都会不同")
-	fmt.Println("建议配置: use-random: false（与 CDN 控制台保持一致）")
+	fmt.Println("===== 重要说明 =====")
+	fmt.Println("根据腾讯云 Type-A 鉴权文档:")
+	fmt.Printf("  1. sign 中的 timestamp = %d (当前时间)\n", nowTs)
+	fmt.Printf("  2. 实际过期时间 = %d (当前时间 + %d秒)\n", expireTime, ttl)
+	fmt.Println("  3. CDN 验证逻辑: timestamp + 控制台配置的有效时长 > 当前时间")
+	fmt.Println("\n⚠️  重要：需要在腾讯云 CDN 控制台配置 \"鉴权URL有效时长 = 600秒\"")
+	fmt.Println("    否则 CDN 会使用控制台配置的时长，而不是代码中的 TTL")
 }
