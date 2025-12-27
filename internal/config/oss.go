@@ -38,6 +38,9 @@ type CdnAuth struct {
 	UID string `yaml:"uid"`
 	// UseUID 是否在签名中使用 UID（某些 CDN 配置可能不需要 UID 参与鉴权）
 	UseUID bool `yaml:"use-uid"`
+	// Separator MD5 计算时的连接符（腾讯云使用 "-"，其他 CDN 可能使用 "@" 等）
+	// 默认值："-"（适配腾讯云）
+	Separator string `yaml:"separator"`
 	// UseRandom 是否使用随机数增强安全性
 	UseRandom bool `yaml:"use-random"`
 	// RandomLength 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
@@ -112,11 +115,14 @@ func (o *Oss) Init() error {
 		}
 		// UseUID 默认值为 true（向后兼容）
 		// 注意：如果 YAML 中明确配置了 false，此处不会覆盖
+		if o.CdnAuth.Separator == "" {
+			o.CdnAuth.Separator = "-" // 默认使用 "-"（适配腾讯云）
+		}
 		if o.CdnAuth.RandomLength <= 0 {
 			o.CdnAuth.RandomLength = 6 // 默认6位（适配腾讯云）
 		}
-		logs.Success("CDN Type-A 鉴权已启用, TTL: %d 秒, UseUID: %v, 随机数: %v (长度: %d)",
-			o.CdnAuth.TTL, o.CdnAuth.UseUID, o.CdnAuth.UseRandom, o.CdnAuth.RandomLength)
+		logs.Success("CDN Type-A 鉴权已启用, TTL: %d 秒, UseUID: %v, Separator: %s, 随机数: %v (长度: %d)",
+			o.CdnAuth.TTL, o.CdnAuth.UseUID, o.CdnAuth.Separator, o.CdnAuth.UseRandom, o.CdnAuth.RandomLength)
 	}
 
 	// 验证 API Key 配置

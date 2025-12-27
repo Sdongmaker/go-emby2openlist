@@ -14,10 +14,11 @@ func TestGenerateAuthKey(t *testing.T) {
 	ttl := int64(3600)
 	uid := "0"
 	useUID := true
+	separator := "-"
 	useRandom := false
 	randomLength := 6
 
-	authKey := GenerateAuthKey(uri, privateKey, ttl, uid, useUID, useRandom, randomLength)
+	authKey := GenerateAuthKey(uri, privateKey, ttl, uid, useUID, separator, useRandom, randomLength)
 
 	// auth_key 格式: timestamp-rand-uid-md5hash
 	// 因为 timestamp 是动态的，我们只能验证格式
@@ -41,6 +42,7 @@ func TestBuildURL(t *testing.T) {
 				TTL:        3600,
 				UID:        "0",
 				UseUID:     true,
+				Separator:  "-",
 				UseRandom:  false,
 			},
 		},
