@@ -47,13 +47,11 @@ func encodePathForCDN(path string) string {
 //   3. 连接符固定使用 "-"
 //   4. UID 参与签名计算
 func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool, randomLength int) string {
-	// 步骤1：获取当前时间戳（UTC）
+	// 获取当前时间戳（UTC）
 	timestamp := time.Now().Unix()
 	timestampStr := strconv.FormatInt(timestamp, 10)
 
-	logs.Info("[CDN Auth Step 1] 当前时间戳: %s", timestampStr)
-
-	// 步骤2：生成随机字符串
+	// 生成随机字符串
 	randStr := "0"
 	if useRandom {
 		if randomLength <= 0 {
@@ -61,32 +59,18 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 		}
 		randStr = randoms.RandomAlphaNum(randomLength)
 	}
-	logs.Info("[CDN Auth Step 2] 随机字符串: %s (useRandom=%v, length=%d)", randStr, useRandom, randomLength)
 
-	// 步骤3：计算 MD5 签名（腾讯云标准 Type-A 算法）
-	logs.Info("[CDN Auth Step 3.1] 开始计算 MD5 签名（腾讯云 Type-A）")
-	logs.Info("[CDN Auth Step 3.2] 参数详情 - uri: %s", uri)
-	logs.Info("[CDN Auth Step 3.3] 参数详情 - timestamp: %s", timestampStr)
-	logs.Info("[CDN Auth Step 3.4] 参数详情 - rand: %s", randStr)
-	logs.Info("[CDN Auth Step 3.5] 参数详情 - uid: %s", uid)
-	logs.Info("[CDN Auth Step 3.6] 参数详情 - privateKey: %s", privateKey)
-
-	// 腾讯云固定使用 "-" 作为连接符
+	// 计算 MD5 签名（腾讯云标准 Type-A 算法）
 	rawSignStr := fmt.Sprintf("%s-%s-%s-%s-%s", uri, timestampStr, randStr, uid, privateKey)
-	logs.Info("[CDN Auth Step 3.7] 原始签名字符串: %s", rawSignStr)
-
 	md5Hash := md5.New()
 	md5Hash.Write([]byte(rawSignStr))
 	md5hash := hex.EncodeToString(md5Hash.Sum(nil))
-	logs.Info("[CDN Auth Step 3.8] MD5 计算结果（小写）: %s", md5hash)
 
-	// 步骤4：生成最终签名（包含 UID）
+	// 生成最终签名（包含 UID）
 	signParam := fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, uid, md5hash)
-	logs.Info("[CDN Auth Step 4] 最终签名参数: %s", signParam)
 
-	// 签名格式说明
-	logs.Info("[CDN Auth] 签名格式: timestamp-rand-uid-md5hash")
-	logs.Info("[CDN Auth] 连接符: - (固定), UID: %s", uid)
+	// 输出关键信息日志
+	logs.Info("[CDN Auth] sign=%s, ts=%s, md5=%s", signParam, timestampStr, md5hash[:8]+"...")
 
 	return signParam
 }

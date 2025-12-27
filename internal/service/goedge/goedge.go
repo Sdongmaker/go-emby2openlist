@@ -21,13 +21,11 @@ import (
 //   2. 连接符固定使用 "@"
 //   3. MD5 结果必须是小写
 func GenerateAuthSign(path string, privateKey string, ttl int64, useRandom bool, randomLength int) string {
-	// 步骤1：获取当前时间戳（UTC）
+	// 获取当前时间戳（UTC）
 	timestamp := time.Now().Unix()
 	timestampStr := strconv.FormatInt(timestamp, 10)
 
-	logs.Info("[GoEdge Auth Step 1] 当前时间戳: %s", timestampStr)
-
-	// 步骤2：生成随机字符串
+	// 生成随机字符串
 	randStr := "0"
 	if useRandom {
 		if randomLength <= 0 {
@@ -35,32 +33,19 @@ func GenerateAuthSign(path string, privateKey string, ttl int64, useRandom bool,
 		}
 		randStr = randoms.RandomAlphaNum(randomLength)
 	}
-	logs.Info("[GoEdge Auth Step 2] 随机字符串: %s (useRandom=%v, length=%d)", randStr, useRandom, randomLength)
 
-	// 步骤3：计算 MD5 签名
-	logs.Info("[GoEdge Auth Step 3.1] 开始计算 MD5 签名")
-	logs.Info("[GoEdge Auth Step 3.2] 参数详情 - path: %s", path)
-	logs.Info("[GoEdge Auth Step 3.3] 参数详情 - timestamp: %s", timestampStr)
-	logs.Info("[GoEdge Auth Step 3.4] 参数详情 - rand: %s", randStr)
-	logs.Info("[GoEdge Auth Step 3.5] 参数详情 - privateKey: %s", privateKey)
-
-	// 固定使用 @ 作为连接符
+	// 计算 MD5 签名（固定使用 @ 作为连接符）
 	rawSignStr := fmt.Sprintf("%s@%s@%s@%s", path, timestampStr, randStr, privateKey)
-	logs.Info("[GoEdge Auth Step 3.6] 原始签名字符串: %s", rawSignStr)
-
 	md5Hash := md5.New()
 	md5Hash.Write([]byte(rawSignStr))
 	// GoEdge 要求 MD5 结果必须是小写
 	md5hash := strings.ToLower(hex.EncodeToString(md5Hash.Sum(nil)))
-	logs.Info("[GoEdge Auth Step 3.7] MD5 计算结果（小写）: %s", md5hash)
 
-	// 步骤4：生成最终签名
+	// 生成最终签名
 	signParam := fmt.Sprintf("%s-%s-%s", timestampStr, randStr, md5hash)
-	logs.Info("[GoEdge Auth Step 4] 最终签名参数: %s", signParam)
 
-	// 签名格式说明
-	logs.Info("[GoEdge Auth] 签名格式: timestamp-rand-md5hash")
-	logs.Info("[GoEdge Auth] 连接符: @ (固定), MD5: 小写")
+	// 输出关键信息日志
+	logs.Info("[GoEdge Auth] sign=%s, ts=%s, md5=%s", signParam, timestampStr, md5hash[:8]+"...")
 
 	return signParam
 }

@@ -3,9 +3,17 @@ package config
 import (
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/util/logs"
 )
+
+// goedgePathCacheItem 路径缓存项（带过期时间）
+type goedgePathCacheItem struct {
+	value    string
+	expireAt time.Time
+}
 
 // GoEdge GoEdge CDN 配置
 type GoEdge struct {
@@ -15,11 +23,15 @@ type GoEdge struct {
 	Endpoint string `yaml:"endpoint"`
 	// PathMapping Emby路径到GoEdge路径的映射关系
 	PathMapping []string `yaml:"path-mapping"`
+	// PathMappingCacheTTL 路径映射缓存过期时间（秒），默认 3600 秒（1小时）
+	PathMappingCacheTTL int64 `yaml:"path-mapping-cache-ttl"`
 	// Auth GoEdge 鉴权配置
 	Auth *GoEdgeAuth `yaml:"auth"`
 
 	// 内部使用的映射表
 	pathMappingTable map[string]string
+	// 路径映射缓存（提升性能，避免重复计算）
+	pathMappingCache sync.Map
 }
 
 // GoEdgeAuth GoEdge 鉴权配置
@@ -54,6 +66,11 @@ func (g *GoEdge) Init() error {
 
 	// 移除 endpoint 末尾的斜杠
 	g.Endpoint = strings.TrimRight(g.Endpoint, "/")
+
+	// 设置默认的缓存 TTL（1小时）
+	if g.PathMappingCacheTTL <= 0 {
+		g.PathMappingCacheTTL = 3600
+	}
 
 	// 初始化路径映射表
 	g.pathMappingTable = make(map[string]string)
@@ -102,11 +119,28 @@ func (g *GoEdge) MapPath(embyPath string) (string, error) {
 		return "", fmt.Errorf("路径映射表未初始化")
 	}
 
+	// 先检查缓存
+	if cached, ok := g.pathMappingCache.Load(embyPath); ok {
+		item := cached.(*goedgePathCacheItem)
+		// 检查是否过期
+		if time.Now().Before(item.expireAt) {
+			return item.value, nil
+		}
+		// 过期则删除
+		g.pathMappingCache.Delete(embyPath)
+	}
+
 	// 遍历映射表,找到匹配的前缀
 	for embyPrefix, goedgePrefix := range g.pathMappingTable {
 		if strings.HasPrefix(embyPath, embyPrefix) {
 			// 替换前缀
 			goedgePath := strings.Replace(embyPath, embyPrefix, goedgePrefix, 1)
+			// 存入缓存（带过期时间）
+			item := &goedgePathCacheItem{
+				value:    goedgePath,
+				expireAt: time.Now().Add(time.Duration(g.PathMappingCacheTTL) * time.Second),
+			}
+			g.pathMappingCache.Store(embyPath, item)
 			return goedgePath, nil
 		}
 	}

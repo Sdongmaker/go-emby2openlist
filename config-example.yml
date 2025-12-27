@@ -144,6 +144,9 @@ oss:
     - /movie:/movies
     - /series:/tv-shows
     - /music:/music
+  # 路径映射缓存过期时间（秒），默认 3600 秒（1小时）
+  # 设置为 0 表示永不过期（程序重启后清空）
+  path-mapping-cache-ttl: 3600
   # CDN Type-A 鉴权配置（腾讯云 CDN）
   cdn-auth:
     enable: true                             # 是否启用 CDN Type-A 鉴权
@@ -168,6 +171,9 @@ goedge:
     - /movie:/images
     - /series:/videos
     - /music:/music
+  # 路径映射缓存过期时间（秒），默认 3600 秒（1小时）
+  # 设置为 0 表示永不过期（程序重启后清空）
+  path-mapping-cache-ttl: 3600
   # GoEdge 鉴权配置
   auth:
     enable: true                             # 是否启用 GoEdge 鉴权

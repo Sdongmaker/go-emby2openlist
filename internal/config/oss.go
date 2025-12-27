@@ -3,9 +3,17 @@ package config
 import (
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/util/logs"
 )
+
+// pathCacheItem 路径缓存项（带过期时间）
+type pathCacheItem struct {
+	value    string
+	expireAt time.Time
+}
 
 // Oss 对象存储配置
 type Oss struct {
@@ -17,6 +25,8 @@ type Oss struct {
 	Bucket string `yaml:"bucket"`
 	// PathMapping Emby路径到OSS路径的映射关系
 	PathMapping []string `yaml:"path-mapping"`
+	// PathMappingCacheTTL 路径映射缓存过期时间（秒），默认 3600 秒（1小时）
+	PathMappingCacheTTL int64 `yaml:"path-mapping-cache-ttl"`
 	// CdnAuth CDN Type-A 鉴权配置
 	CdnAuth *CdnAuth `yaml:"cdn-auth"`
 	// ApiKey 源站验证 API Key 配置
@@ -24,6 +34,8 @@ type Oss struct {
 
 	// 内部使用的映射表
 	pathMappingTable map[string]string
+	// 路径映射缓存（提升性能，避免重复计算）
+	pathMappingCache sync.Map
 }
 
 // CdnAuth CDN Type-A 鉴权配置（腾讯云 CDN）
@@ -74,6 +86,11 @@ func (o *Oss) Init() error {
 
 	// 移除 endpoint 末尾的斜杠
 	o.Endpoint = strings.TrimRight(o.Endpoint, "/")
+
+	// 设置默认的缓存 TTL（1小时）
+	if o.PathMappingCacheTTL <= 0 {
+		o.PathMappingCacheTTL = 3600
+	}
 
 	// 初始化路径映射表
 	o.pathMappingTable = make(map[string]string)
@@ -136,11 +153,28 @@ func (o *Oss) MapPath(embyPath string) (string, error) {
 		return "", fmt.Errorf("路径映射表未初始化")
 	}
 
+	// 先检查缓存
+	if cached, ok := o.pathMappingCache.Load(embyPath); ok {
+		item := cached.(*pathCacheItem)
+		// 检查是否过期
+		if time.Now().Before(item.expireAt) {
+			return item.value, nil
+		}
+		// 过期则删除
+		o.pathMappingCache.Delete(embyPath)
+	}
+
 	// 遍历映射表,找到匹配的前缀
 	for embyPrefix, ossPrefix := range o.pathMappingTable {
 		if strings.HasPrefix(embyPath, embyPrefix) {
 			// 替换前缀
 			ossPath := strings.Replace(embyPath, embyPrefix, ossPrefix, 1)
+			// 存入缓存（带过期时间）
+			item := &pathCacheItem{
+				value:    ossPath,
+				expireAt: time.Now().Add(time.Duration(o.PathMappingCacheTTL) * time.Second),
+			}
+			o.pathMappingCache.Store(embyPath, item)
 			return ossPath, nil
 		}
 	}
