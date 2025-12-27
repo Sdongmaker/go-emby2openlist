@@ -160,7 +160,7 @@ func BuildURL(embyPath string) (string, error) {
 	// 7. 如果启用 CDN 鉴权，添加 sign 参数
 	if cfg.CdnAuth.Enable {
 		authKey := GenerateAuthKey(
-			signPath, // 使用编码后的路径
+			encodedPath, // 使用编码后的路径
 			cfg.CdnAuth.PrivateKey,
 			cfg.CdnAuth.TTL,
 			cfg.CdnAuth.UID,
