@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/config"
+	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/service/goedge"
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/service/openlist"
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/service/oss"
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/service/path"
@@ -156,7 +157,27 @@ func Redirect2OpenlistLink(c *gin.Context) {
 		}
 	}
 
-	// 7 请求 openlist 资源
+	// 7 如果启用了 GoEdge CDN 重定向, 直接重定向到 GoEdge
+	if config.C.GoEdge.Enable {
+		logs.Info("GoEdge 模式已启用, 使用 GoEdge CDN 直链")
+		goedgeUrl, err := goedge.BuildURL(embyPath)
+		if err != nil {
+			logs.Error("生成 GoEdge URL 失败: %v, embyPath: %s", err, embyPath)
+			// 根据错误处理策略决定
+			if checkErr(c, err) {
+				return
+			}
+		} else {
+			// 设置缓存时间 (10分钟)
+			c.Header(cache.HeaderKeyExpired, cache.Duration(time.Minute*10))
+
+			logs.Success("重定向到 GoEdge: %s", goedgeUrl)
+			c.Redirect(http.StatusFound, goedgeUrl)
+			return
+		}
+	}
+
+	// 8 请求 openlist 资源
 	fi := openlist.FetchInfo{
 		Header:       c.Request.Header.Clone(),
 		UseTranscode: useTranscode,
