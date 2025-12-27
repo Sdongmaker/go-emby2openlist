@@ -18,6 +18,7 @@ const (
 	Reg_UserItemsRandomWithLimit = `(?i)^/.*users/.*/items/with_limit\?.*SortBy=Random`
 	Reg_UserPlayedItems          = `(?i)^/.*users/.*/playeditems/(\d+)($|\?|/.*)?`
 	Reg_UserLatestItems          = `(?i)^/.*users/.*/items/latest($|\?)`
+	Reg_ItemsCounts              = `(?i)^/.*items/counts($|\?)`
 
 	Reg_ShowEpisodes   = `(?i)^/.*shows/.*/episodes\??`
 	Reg_VideoSubtitles = `(?i)^/.*videos/.*/subtitles`

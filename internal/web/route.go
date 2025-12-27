@@ -38,6 +38,8 @@ func initRulePatterns() {
 		{constant.Reg_UserItemsRandomWithLimit, emby.RandomItemsWithLimit},
 		// 代理 Latest 接口, 解码媒体的 Path 字段
 		{constant.Reg_UserLatestItems, emby.ProxyLatestItems},
+		// 拦截 Items/Counts 接口，返回自定义媒体库统计
+		{constant.Reg_ItemsCounts, emby.HandleItemsCounts},
 
 		// 重排序剧集
 		{constant.Reg_ShowEpisodes, emby.ResortEpisodes},

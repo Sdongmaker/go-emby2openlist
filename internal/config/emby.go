@@ -58,6 +58,8 @@ type Emby struct {
 	DownloadStrategy DlStrategy `yaml:"download-strategy"`
 	// LocalMediaRoot 本地媒体根路径
 	LocalMediaRoot string `yaml:"local-media-root"`
+	// ItemsCounts 媒体库统计自定义配置
+	ItemsCounts *ItemsCountsConfig `yaml:"items-counts"`
 }
 
 func (e *Emby) Init() error {
@@ -103,6 +105,14 @@ func (e *Emby) Init() error {
 		e.LocalMediaRoot = "/" + randoms.RandomHex(32)
 	}
 
+	// 初始化 ItemsCounts 配置
+	if e.ItemsCounts == nil {
+		e.ItemsCounts = &ItemsCountsConfig{}
+	}
+	if err := e.ItemsCounts.Init(); err != nil {
+		return fmt.Errorf("emby.items-counts 配置错误: %v", err)
+	}
+
 	return nil
 }
 
@@ -142,4 +152,71 @@ func (s *Strm) MapPath(path string) string {
 		}
 	}
 	return path
+}
+
+// ItemsCountsConfig 媒体库统计自定义配置
+type ItemsCountsConfig struct {
+	// Enable 是否启用自定义媒体库统计
+	Enable bool `yaml:"enable"`
+	// Mode 工作模式
+	// - origin: 代理回源，不做修改（默认）
+	// - custom: 完全自定义每个字段的值
+	// - modify: 基于真实数据乘以系数进行修改
+	Mode string `yaml:"mode"`
+	// Multiplier 修改模式下的乘数系数（仅在 mode=modify 时生效）
+	Multiplier float64 `yaml:"multiplier"`
+
+	// 以下字段仅在 mode=custom 时使用
+	MovieCount      int `yaml:"movie-count"`       // 电影数量
+	SeriesCount     int `yaml:"series-count"`      // 剧集数量
+	EpisodeCount    int `yaml:"episode-count"`     // 剧集集数
+	GameCount       int `yaml:"game-count"`        // 游戏数量
+	ArtistCount     int `yaml:"artist-count"`      // 艺术家数量
+	ProgramCount    int `yaml:"program-count"`     // 节目数量
+	GameSystemCount int `yaml:"game-system-count"` // 游戏系统数量
+	TrailerCount    int `yaml:"trailer-count"`     // 预告片数量
+	SongCount       int `yaml:"song-count"`        // 歌曲数量
+	AlbumCount      int `yaml:"album-count"`       // 专辑数量
+	MusicVideoCount int `yaml:"music-video-count"` // 音乐视频数量
+	BoxSetCount     int `yaml:"box-set-count"`     // 合集数量
+	BookCount       int `yaml:"book-count"`        // 书籍数量
+	ItemCount       int `yaml:"item-count"`        // 总项目数量
+}
+
+// Init 配置初始化
+func (ic *ItemsCountsConfig) Init() error {
+	if !ic.Enable {
+		return nil
+	}
+
+	// 默认模式为 origin
+	if ic.Mode == "" {
+		ic.Mode = "origin"
+	}
+
+	// 验证模式
+	validModes := map[string]bool{
+		"origin": true,
+		"custom": true,
+		"modify": true,
+	}
+	if !validModes[ic.Mode] {
+		return fmt.Errorf("items-counts.mode 配置错误: %s, 有效值: origin, custom, modify", ic.Mode)
+	}
+
+	// 修改模式下验证系数
+	if ic.Mode == "modify" {
+		if ic.Multiplier <= 0 {
+			ic.Multiplier = 1.0 // 默认值为 1.0（不修改）
+		}
+		logs.Success("ItemsCounts 配置: 修改模式，系数 = %.2f", ic.Multiplier)
+	}
+
+	// 自定义模式下记录日志
+	if ic.Mode == "custom" {
+		logs.Success("ItemsCounts 配置: 自定义模式，电影=%d, 剧集=%d, 总计=%d",
+			ic.MovieCount, ic.SeriesCount, ic.ItemCount)
+	}
+
+	return nil
 }

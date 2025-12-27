@@ -36,6 +36,31 @@ emby:
   # emby 本地媒体根目录
   # 检测到该路径为前缀的媒体时, 代理回源处理
   local-media-root: /data/local
+  # 媒体库统计自定义配置（拦截 /Items/Counts 接口）
+  items-counts:
+    enable: false                                # 是否启用自定义媒体库统计
+    # 工作模式:
+    #   origin: 代理回源，不做修改（默认）
+    #   custom: 完全自定义每个字段的值
+    #   modify: 基于真实数据乘以系数进行修改
+    mode: origin
+    # 修改模式参数（仅在 mode=modify 时生效）
+    multiplier: 2.0                              # 统计数量的乘数系数（例如：2.0 表示所有数量翻倍）
+    # 自定义模式参数（仅在 mode=custom 时生效）
+    movie-count: 1000                            # 电影数量
+    series-count: 500                            # 剧集数量
+    episode-count: 5000                          # 剧集集数
+    game-count: 0                                # 游戏数量
+    artist-count: 100                            # 艺术家数量
+    program-count: 0                             # 节目数量
+    game-system-count: 0                         # 游戏系统数量
+    trailer-count: 50                            # 预告片数量
+    song-count: 1000                             # 歌曲数量
+    album-count: 100                             # 专辑数量
+    music-video-count: 50                        # 音乐视频数量
+    box-set-count: 20                            # 合集数量
+    book-count: 0                                # 书籍数量
+    item-count: 8000                             # 总项目数量
 
 # openlist 访问配置
 openlist:
