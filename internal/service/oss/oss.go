@@ -44,7 +44,8 @@ func encodePathForCDN(path string) string {
 // 重要：
 //   1. 使用当前 UTC 时间戳（Docker 环境已是 UTC）
 //   2. uri 必须使用 URL 编码后的形式（与 CDN 服务器接收到的路径一致）
-func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRandom bool, randomLength int) string {
+//   3. useUID 控制是否将 UID 参与签名计算（某些 CDN 配置不需要 UID）
+func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUID bool, useRandom bool, randomLength int) string {
 	// 步骤1：获取当前时间戳（UTC）
 	timestamp := time.Now().Unix()
 	timestampStr := strconv.FormatInt(timestamp, 10)
@@ -58,17 +59,29 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useRa
 		randStr = randoms.RandomAlphaNum(randomLength)
 	}
 
-	// 步骤3：计算 MD5 签名（使用编码后的路径）
-	rawSignStr := fmt.Sprintf("%s-%s-%s-%s-%s", uri, timestampStr, randStr, uid, privateKey)
+	// 步骤3：计算 MD5 签名（根据配置决定是否包含 UID）
+	var rawSignStr string
+	var signUID string
+	if useUID {
+		// UID 参与签名计算
+		signUID = uid
+		rawSignStr = fmt.Sprintf("%s-%s-%s-%s-%s", uri, timestampStr, randStr, uid, privateKey)
+	} else {
+		// UID 不参与签名计算，使用固定值 "0"
+		signUID = "0"
+		rawSignStr = fmt.Sprintf("%s-%s-%s-%s", uri, timestampStr, randStr, privateKey)
+	}
+
 	md5Hash := md5.New()
 	md5Hash.Write([]byte(rawSignStr))
 	md5hash := hex.EncodeToString(md5Hash.Sum(nil))
 
-	// 步骤4：生成最终签名
-	signParam := fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, uid, md5hash)
+	// 步骤4：生成最终签名（始终保持格式一致）
+	signParam := fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, signUID, md5hash)
 
 	// 关键日志：仅输出签名计算的核心信息
-	logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s, uid=%s, md5=%s", uri, timestampStr, randStr, uid, md5hash)
+	logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s, uid=%s (useUID=%v), md5=%s",
+		uri, timestampStr, randStr, signUID, useUID, md5hash)
 
 	return signParam
 }
@@ -116,6 +129,7 @@ func BuildURL(embyPath string) (string, error) {
 			cfg.CdnAuth.PrivateKey,
 			cfg.CdnAuth.TTL,
 			cfg.CdnAuth.UID,
+			cfg.CdnAuth.UseUID,
 			cfg.CdnAuth.UseRandom,
 			cfg.CdnAuth.RandomLength,
 		)
