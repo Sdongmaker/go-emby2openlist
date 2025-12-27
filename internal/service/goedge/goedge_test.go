@@ -1,55 +1,52 @@
-package oss
+package goedge
 
 import (
 	"testing"
-	"time"
 
 	"github.com/AmbitiousJun/go-emby2openlist/v2/internal/config"
 )
 
-func TestGenerateAuthKey(t *testing.T) {
-	// 测试腾讯云 CDN Type-A 算法
-	uri := "/video/test.mp4"
-	privateKey := "aliyuncdnexp1234"
+func TestGenerateAuthSign(t *testing.T) {
+	// 测试 GoEdge 鉴权算法
+	path := "/images/test.jpg"
+	privateKey := "123456"
 	ttl := int64(3600)
-	uid := "0"
 	useRandom := false
-	randomLength := 6
+	randomLength := 16
 
-	authKey := GenerateAuthKey(uri, privateKey, ttl, uid, useRandom, randomLength)
+	authSign := GenerateAuthSign(path, privateKey, ttl, useRandom, randomLength)
 
-	// auth_key 格式: timestamp-rand-uid-md5hash
+	// sign 格式: timestamp-rand-md5hash
 	// 因为 timestamp 是动态的，我们只能验证格式
-	if authKey == "" {
-		t.Errorf("GenerateAuthKey 返回空字符串")
+	if authSign == "" {
+		t.Errorf("GenerateAuthSign 返回空字符串")
 	}
 
-	t.Logf("生成的 auth_key: %s", authKey)
+	t.Logf("生成的 sign: %s", authSign)
 }
 
 func TestBuildURL(t *testing.T) {
 	// 初始化测试配置
 	config.C = &config.Config{
-		Oss: &config.Oss{
+		GoEdge: &config.GoEdge{
 			Enable:   true,
-			Endpoint: "https://s3.startspoint.com",
-			Bucket:   "",
-			CdnAuth: &config.CdnAuth{
-				Enable:     true,
-				PrivateKey: "test-private-key",
-				TTL:        3600,
-				UID:        "0",
-				UseRandom:  false,
+			Endpoint: "https://example.com",
+			Auth: &config.GoEdgeAuth{
+				Enable:       true,
+				PrivateKey:   "123456",
+				TTL:          3600,
+				UseRandom:    true,
+				RandomLength: 16,
 			},
 		},
 	}
 
 	// 初始化路径映射
-	config.C.Oss.PathMapping = []string{
-		"/movie:/media",
-		"/series:/tv",
+	config.C.GoEdge.PathMapping = []string{
+		"/movie:/images",
+		"/series:/videos",
 	}
-	config.C.Oss.Init()
+	config.C.GoEdge.Init()
 
 	tests := []struct {
 		name      string
@@ -90,12 +87,12 @@ func TestBuildURL(t *testing.T) {
 func TestMapPath(t *testing.T) {
 	// 初始化测试配置
 	config.C = &config.Config{
-		Oss: &config.Oss{
+		GoEdge: &config.GoEdge{
 			Enable:      true,
-			PathMapping: []string{"/movie:/media", "/series:/tv-shows"},
+			PathMapping: []string{"/movie:/images", "/series:/videos"},
 		},
 	}
-	config.C.Oss.Init()
+	config.C.GoEdge.Init()
 
 	tests := []struct {
 		name      string
@@ -106,19 +103,19 @@ func TestMapPath(t *testing.T) {
 		{
 			name:      "movie 路径映射",
 			embyPath:  "/movie/test.mkv",
-			want:      "/media/test.mkv",
+			want:      "/images/test.mkv",
 			wantError: false,
 		},
 		{
 			name:      "series 路径映射",
 			embyPath:  "/series/show/S01E01.mkv",
-			want:      "/tv-shows/show/S01E01.mkv",
+			want:      "/videos/show/S01E01.mkv",
 			wantError: false,
 		},
 		{
 			name:      "中文路径映射",
 			embyPath:  "/movie/星际穿越/星际穿越.mkv",
-			want:      "/media/星际穿越/星际穿越.mkv",
+			want:      "/images/星际穿越/星际穿越.mkv",
 			wantError: false,
 		},
 		{
@@ -141,35 +138,4 @@ func TestMapPath(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestTypeAAlgorithm(t *testing.T) {
-	// 测试 Type-A 算法的正确性
-	// 根据阿里云文档的示例验证
-	uri := "/video/standard/test.mp4"
-	privateKey := "aliyuncdnexp1234"
-	timestamp := int64(1444435200)
-	rand := "0"
-	uid := "0"
-
-	// 手动构造签名字符串
-	sstring := "/video/standard/test.mp4-1444435200-0-0-aliyuncdnexp1234"
-
-	// 预期的 MD5 值（根据阿里云文档）
-	expectedMD5 := "23bf85053008f5c0e791667a313e28ce"
-
-	// 模拟固定时间戳的签名生成
-	import (
-		"crypto/md5"
-		"fmt"
-	)
-
-	hash := md5.Sum([]byte(sstring))
-	actualMD5 := fmt.Sprintf("%x", hash)
-
-	if actualMD5 != expectedMD5 {
-		t.Errorf("MD5 计算错误: got %s, want %s", actualMD5, expectedMD5)
-	}
-
-	t.Logf("Type-A 算法验证通过: %s", actualMD5)
 }

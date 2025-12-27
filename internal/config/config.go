@@ -25,8 +25,10 @@ type Config struct {
 	Ssl *Ssl `yaml:"ssl"`
 	// Log 日志相关配置
 	Log *Log `yaml:"log"`
-	// Oss 对象存储配置
+	// Oss 对象存储配置（腾讯云 CDN）
 	Oss *Oss `yaml:"oss"`
+	// GoEdge GoEdge CDN 配置
+	GoEdge *GoEdge `yaml:"goedge"`
 }
 
 // C 全局唯一配置对象

@@ -133,7 +133,7 @@ log:
   # 可以将该项设置为 true
   disable-color: false
 
-# 对象存储 OSS 配置 (用于302重定向到公共对象存储)
+# 对象存储 OSS 配置 (用于302重定向到公共对象存储，腾讯云 CDN Type-A 鉴权)
 oss:
   enable: false                              # 是否启用 OSS 重定向功能
   endpoint: https://oss.example.com          # 对象存储访问域名 (endpoint)
@@ -144,19 +144,34 @@ oss:
     - /movie:/movies
     - /series:/tv-shows
     - /music:/music
-  # CDN Type-A 鉴权配置
+  # CDN Type-A 鉴权配置（腾讯云 CDN）
   cdn-auth:
     enable: true                             # 是否启用 CDN Type-A 鉴权
     private-key: your-cdn-private-key-here   # CDN 鉴权密钥
     ttl: 3600                                # 鉴权URL有效期 (秒), 默认3600秒(1小时)
     uid: 0                                   # 用户ID, 通常设置为0
-    use-uid: true                            # 是否在签名中使用 UID（某些 CDN 配置可能不需要 UID 参与鉴权）
-    separator: "-"                           # MD5 计算时的连接符（腾讯云使用 "-"，其他 CDN 可能使用 "@"），默认 "-"
-    md5-to-upper: false                      # MD5 哈希结果是否转换为大写（false=小写，true=大写），默认 false（小写）
     use-random: false                        # 是否使用随机数（false=固定"0"，true=随机数）
-    random-length: 6                         # 随机数长度（腾讯云: 6位，阿里云: 32位），默认6
+    random-length: 6                         # 随机数长度，默认6位
   # 源站验证 API Key 配置
   api-key:
     enable: true                             # 是否启用 API Key 验证
     header-name: X-Api-Key                   # 响应头名称
     key: your-api-key-here                   # API Key 值
+
+# GoEdge CDN 配置 (用于302重定向到 GoEdge CDN)
+goedge:
+  enable: false                              # 是否启用 GoEdge CDN 重定向功能
+  endpoint: https://example.com              # GoEdge CDN 访问域名
+  # Emby路径到GoEdge路径的映射关系
+  # 格式: Emby本地路径前缀:GoEdge路径前缀
+  path-mapping:
+    - /movie:/images
+    - /series:/videos
+    - /music:/music
+  # GoEdge 鉴权配置
+  auth:
+    enable: true                             # 是否启用 GoEdge 鉴权
+    private-key: 123456                      # 鉴权密钥
+    ttl: 3600                                # 鉴权URL有效期 (秒), 默认3600秒(1小时)
+    use-random: true                         # 是否使用随机字符串（false=固定"0"，true=随机字符串）
+    random-length: 16                        # 随机字符串长度，默认16位
