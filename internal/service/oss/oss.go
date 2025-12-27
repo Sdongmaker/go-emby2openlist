@@ -69,30 +69,53 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUI
 	var signParam string
 	if useUID {
 		// UID 参与签名计算
+		logs.Info("[CDN Auth Step 3.1] 开始计算 MD5 签名（包含 UID）")
+		logs.Info("[CDN Auth Step 3.2] 参数详情 - uri: %s", uri)
+		logs.Info("[CDN Auth Step 3.3] 参数详情 - timestamp: %s", timestampStr)
+		logs.Info("[CDN Auth Step 3.4] 参数详情 - rand: %s", randStr)
+		logs.Info("[CDN Auth Step 3.5] 参数详情 - uid: %s", uid)
+		logs.Info("[CDN Auth Step 3.6] 参数详情 - separator: %s", separator)
+		logs.Info("[CDN Auth Step 3.7] 参数详情 - privateKey: %s", privateKey)
+
 		rawSignStr = fmt.Sprintf("%s%s%s%s%s%s%s%s%s", uri, separator, timestampStr, separator, randStr, separator, uid, separator, privateKey)
+		logs.Info("[CDN Auth Step 3.8] 原始签名字符串: %s", rawSignStr)
+
 		md5Hash := md5.New()
 		md5Hash.Write([]byte(rawSignStr))
 		md5hash := hex.EncodeToString(md5Hash.Sum(nil))
+		logs.Info("[CDN Auth Step 3.9] MD5 计算结果: %s", md5hash)
 
 		// 步骤4：生成最终签名（包含 UID）
 		signParam = fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, uid, md5hash)
+		logs.Info("[CDN Auth Step 4] 最终签名参数: %s", signParam)
 
-		// 关键日志：仅输出签名计算的核心信息
-		logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s, uid=%s (useUID=%v), sep=%s, md5=%s",
-			uri, timestampStr, randStr, uid, useUID, separator, md5hash)
+		// 签名格式说明
+		logs.Info("[CDN Auth] 签名格式: timestamp-rand-uid-md5hash")
+		logs.Info("[CDN Auth] useUID=%v, separator=%s", useUID, separator)
 	} else {
 		// UID 不参与签名计算
+		logs.Info("[CDN Auth Step 3.1] 开始计算 MD5 签名（不包含 UID）")
+		logs.Info("[CDN Auth Step 3.2] 参数详情 - uri: %s", uri)
+		logs.Info("[CDN Auth Step 3.3] 参数详情 - timestamp: %s", timestampStr)
+		logs.Info("[CDN Auth Step 3.4] 参数详情 - rand: %s", randStr)
+		logs.Info("[CDN Auth Step 3.5] 参数详情 - separator: %s", separator)
+		logs.Info("[CDN Auth Step 3.6] 参数详情 - privateKey: %s", privateKey)
+
 		rawSignStr = fmt.Sprintf("%s%s%s%s%s%s%s", uri, separator, timestampStr, separator, randStr, separator, privateKey)
+		logs.Info("[CDN Auth Step 3.7] 原始签名字符串: %s", rawSignStr)
+
 		md5Hash := md5.New()
 		md5Hash.Write([]byte(rawSignStr))
 		md5hash := hex.EncodeToString(md5Hash.Sum(nil))
+		logs.Info("[CDN Auth Step 3.8] MD5 计算结果: %s", md5hash)
 
 		// 步骤4：生成最终签名（不包含 UID）
 		signParam = fmt.Sprintf("%s-%s-%s", timestampStr, randStr, md5hash)
+		logs.Info("[CDN Auth Step 4] 最终签名参数: %s", signParam)
 
-		// 关键日志：仅输出签名计算的核心信息
-		logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s (useUID=%v), sep=%s, md5=%s",
-			uri, timestampStr, randStr, useUID, separator, md5hash)
+		// 签名格式说明
+		logs.Info("[CDN Auth] 签名格式: timestamp-rand-md5hash")
+		logs.Info("[CDN Auth] useUID=%v, separator=%s", useUID, separator)
 	}
 
 	return signParam
