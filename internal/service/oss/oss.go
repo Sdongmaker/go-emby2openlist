@@ -39,8 +39,12 @@ func encodePathForCDN(path string) string {
 }
 
 // GenerateAuthKey 生成 Type-A CDN 鉴权的 sign 参数
-// 算法: sign = {timestamp}-{rand}-{uid}-{md5hash}
-// 其中: md5hash = md5("{uri}-{timestamp}-{rand}-{uid}-{privateKey}")
+// 当 useUID=true 时：
+//   - 算法: sign = {timestamp}-{rand}-{uid}-{md5hash}
+//   - MD5: md5hash = md5("{uri}-{timestamp}-{rand}-{uid}-{privateKey}")
+// 当 useUID=false 时：
+//   - 算法: sign = {timestamp}-{rand}-{md5hash}
+//   - MD5: md5hash = md5("{uri}-{timestamp}-{rand}-{privateKey}")
 // 重要：
 //   1. 使用当前 UTC 时间戳（Docker 环境已是 UTC）
 //   2. uri 必须使用 URL 编码后的形式（与 CDN 服务器接收到的路径一致）
@@ -61,27 +65,34 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUI
 
 	// 步骤3：计算 MD5 签名（根据配置决定是否包含 UID）
 	var rawSignStr string
-	var signUID string
+	var signParam string
 	if useUID {
 		// UID 参与签名计算
-		signUID = uid
 		rawSignStr = fmt.Sprintf("%s-%s-%s-%s-%s", uri, timestampStr, randStr, uid, privateKey)
+		md5Hash := md5.New()
+		md5Hash.Write([]byte(rawSignStr))
+		md5hash := hex.EncodeToString(md5Hash.Sum(nil))
+
+		// 步骤4：生成最终签名（包含 UID）
+		signParam = fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, uid, md5hash)
+
+		// 关键日志：仅输出签名计算的核心信息
+		logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s, uid=%s (useUID=%v), md5=%s",
+			uri, timestampStr, randStr, uid, useUID, md5hash)
 	} else {
-		// UID 不参与签名计算，使用固定值 "0"
-		signUID = "0"
+		// UID 不参与签名计算
 		rawSignStr = fmt.Sprintf("%s-%s-%s-%s", uri, timestampStr, randStr, privateKey)
+		md5Hash := md5.New()
+		md5Hash.Write([]byte(rawSignStr))
+		md5hash := hex.EncodeToString(md5Hash.Sum(nil))
+
+		// 步骤4：生成最终签名（不包含 UID）
+		signParam = fmt.Sprintf("%s-%s-%s", timestampStr, randStr, md5hash)
+
+		// 关键日志：仅输出签名计算的核心信息
+		logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s (useUID=%v), md5=%s",
+			uri, timestampStr, randStr, useUID, md5hash)
 	}
-
-	md5Hash := md5.New()
-	md5Hash.Write([]byte(rawSignStr))
-	md5hash := hex.EncodeToString(md5Hash.Sum(nil))
-
-	// 步骤4：生成最终签名（始终保持格式一致）
-	signParam := fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, signUID, md5hash)
-
-	// 关键日志：仅输出签名计算的核心信息
-	logs.Info("[CDN Auth] uri=%s, ts=%s, rand=%s, uid=%s (useUID=%v), md5=%s",
-		uri, timestampStr, randStr, signUID, useUID, md5hash)
 
 	return signParam
 }
