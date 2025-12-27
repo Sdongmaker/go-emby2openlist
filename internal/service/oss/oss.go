@@ -50,7 +50,8 @@ func encodePathForCDN(path string) string {
 //   2. uri 必须使用 URL 编码后的形式（与 CDN 服务器接收到的路径一致）
 //   3. useUID 控制是否将 UID 参与签名计算（某些 CDN 配置不需要 UID）
 //   4. separator 是 MD5 计算时的连接符（腾讯云使用 "-"，其他 CDN 可能使用 "@" 等）
-func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUID bool, separator string, useRandom bool, randomLength int) string {
+//   5. md5ToUpper 控制 MD5 哈希结果的大小写（false=小写，true=大写）
+func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUID bool, separator string, md5ToUpper bool, useRandom bool, randomLength int) string {
 	// 步骤1：获取当前时间戳（UTC）
 	timestamp := time.Now().Unix()
 	timestampStr := strconv.FormatInt(timestamp, 10)
@@ -83,7 +84,14 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUI
 		md5Hash := md5.New()
 		md5Hash.Write([]byte(rawSignStr))
 		md5hash := hex.EncodeToString(md5Hash.Sum(nil))
-		logs.Info("[CDN Auth Step 3.9] MD5 计算结果: %s", md5hash)
+
+		// 根据配置转换大小写
+		if md5ToUpper {
+			md5hash = strings.ToUpper(md5hash)
+			logs.Info("[CDN Auth Step 3.9] MD5 计算结果（大写）: %s", md5hash)
+		} else {
+			logs.Info("[CDN Auth Step 3.9] MD5 计算结果（小写）: %s", md5hash)
+		}
 
 		// 步骤4：生成最终签名（包含 UID）
 		signParam = fmt.Sprintf("%s-%s-%s-%s", timestampStr, randStr, uid, md5hash)
@@ -91,7 +99,7 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUI
 
 		// 签名格式说明
 		logs.Info("[CDN Auth] 签名格式: timestamp-rand-uid-md5hash")
-		logs.Info("[CDN Auth] useUID=%v, separator=%s", useUID, separator)
+		logs.Info("[CDN Auth] useUID=%v, separator=%s, md5ToUpper=%v", useUID, separator, md5ToUpper)
 	} else {
 		// UID 不参与签名计算
 		logs.Info("[CDN Auth Step 3.1] 开始计算 MD5 签名（不包含 UID）")
@@ -107,7 +115,14 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUI
 		md5Hash := md5.New()
 		md5Hash.Write([]byte(rawSignStr))
 		md5hash := hex.EncodeToString(md5Hash.Sum(nil))
-		logs.Info("[CDN Auth Step 3.8] MD5 计算结果: %s", md5hash)
+
+		// 根据配置转换大小写
+		if md5ToUpper {
+			md5hash = strings.ToUpper(md5hash)
+			logs.Info("[CDN Auth Step 3.8] MD5 计算结果（大写）: %s", md5hash)
+		} else {
+			logs.Info("[CDN Auth Step 3.8] MD5 计算结果（小写）: %s", md5hash)
+		}
 
 		// 步骤4：生成最终签名（不包含 UID）
 		signParam = fmt.Sprintf("%s-%s-%s", timestampStr, randStr, md5hash)
@@ -115,7 +130,7 @@ func GenerateAuthKey(uri string, privateKey string, ttl int64, uid string, useUI
 
 		// 签名格式说明
 		logs.Info("[CDN Auth] 签名格式: timestamp-rand-md5hash")
-		logs.Info("[CDN Auth] useUID=%v, separator=%s", useUID, separator)
+		logs.Info("[CDN Auth] useUID=%v, separator=%s, md5ToUpper=%v", useUID, separator, md5ToUpper)
 	}
 
 	return signParam
@@ -166,6 +181,7 @@ func BuildURL(embyPath string) (string, error) {
 			cfg.CdnAuth.UID,
 			cfg.CdnAuth.UseUID,
 			cfg.CdnAuth.Separator,
+			cfg.CdnAuth.MD5ToUpper,
 			cfg.CdnAuth.UseRandom,
 			cfg.CdnAuth.RandomLength,
 		)

@@ -152,6 +152,7 @@ oss:
     uid: 0                                   # 用户ID, 通常设置为0
     use-uid: true                            # 是否在签名中使用 UID（某些 CDN 配置可能不需要 UID 参与鉴权）
     separator: "-"                           # MD5 计算时的连接符（腾讯云使用 "-"，其他 CDN 可能使用 "@"），默认 "-"
+    md5-to-upper: false                      # MD5 哈希结果是否转换为大写（false=小写，true=大写），默认 false（小写）
     use-random: false                        # 是否使用随机数（false=固定"0"，true=随机数）
     random-length: 6                         # 随机数长度（腾讯云: 6位，阿里云: 32位），默认6
   # 源站验证 API Key 配置

@@ -41,6 +41,9 @@ type CdnAuth struct {
 	// Separator MD5 计算时的连接符（腾讯云使用 "-"，其他 CDN 可能使用 "@" 等）
 	// 默认值："-"（适配腾讯云）
 	Separator string `yaml:"separator"`
+	// MD5ToUpper MD5 哈希结果是否转换为大写（false=小写，true=大写）
+	// 默认值：false（大多数 CDN 使用小写哈希）
+	MD5ToUpper bool `yaml:"md5-to-upper"`
 	// UseRandom 是否使用随机数增强安全性
 	UseRandom bool `yaml:"use-random"`
 	// RandomLength 随机数长度（腾讯云建议 6 位，阿里云建议 32 位）
@@ -121,8 +124,8 @@ func (o *Oss) Init() error {
 		if o.CdnAuth.RandomLength <= 0 {
 			o.CdnAuth.RandomLength = 6 // 默认6位（适配腾讯云）
 		}
-		logs.Success("CDN Type-A 鉴权已启用, TTL: %d 秒, UseUID: %v, Separator: %s, 随机数: %v (长度: %d)",
-			o.CdnAuth.TTL, o.CdnAuth.UseUID, o.CdnAuth.Separator, o.CdnAuth.UseRandom, o.CdnAuth.RandomLength)
+		logs.Success("CDN Type-A 鉴权已启用, TTL: %d 秒, UseUID: %v, Separator: %s, MD5ToUpper: %v, 随机数: %v (长度: %d)",
+			o.CdnAuth.TTL, o.CdnAuth.UseUID, o.CdnAuth.Separator, o.CdnAuth.MD5ToUpper, o.CdnAuth.UseRandom, o.CdnAuth.RandomLength)
 	}
 
 	// 验证 API Key 配置
