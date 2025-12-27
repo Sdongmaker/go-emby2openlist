@@ -166,7 +166,7 @@ type ItemsCountsConfig struct {
 	// Multiplier 修改模式下的乘数系数（仅在 mode=modify 时生效）
 	Multiplier float64 `yaml:"multiplier"`
 
-	// 以下字段仅在 mode=custom 时使用
+	// 以下字段仅在 mode=custom 时使用（全局默认值）
 	MovieCount      int `yaml:"movie-count"`       // 电影数量
 	SeriesCount     int `yaml:"series-count"`      // 剧集数量
 	EpisodeCount    int `yaml:"episode-count"`     // 剧集集数
@@ -181,6 +181,32 @@ type ItemsCountsConfig struct {
 	BoxSetCount     int `yaml:"box-set-count"`     // 合集数量
 	BookCount       int `yaml:"book-count"`        // 书籍数量
 	ItemCount       int `yaml:"item-count"`        // 总项目数量
+
+	// LibraryCounts 媒体库级别的自定义统计（优先级高于全局默认值）
+	LibraryCounts []*LibraryCount `yaml:"library-counts"`
+
+	// 内部使用：媒体库ID到统计数据的映射表（快速查找）
+	libraryCountsMap map[string]*LibraryCount
+}
+
+// LibraryCount 单个媒体库的自定义统计
+type LibraryCount struct {
+	LibraryID       string `yaml:"library-id"`        // 媒体库ID（从 Emby URL 的 ParentId 参数获取）
+	Name            string `yaml:"name"`              // 媒体库名称（可选，仅用于配置可读性）
+	MovieCount      int    `yaml:"movie-count"`       // 电影数量
+	SeriesCount     int    `yaml:"series-count"`      // 剧集数量
+	EpisodeCount    int    `yaml:"episode-count"`     // 剧集集数
+	GameCount       int    `yaml:"game-count"`        // 游戏数量
+	ArtistCount     int    `yaml:"artist-count"`      // 艺术家数量
+	ProgramCount    int    `yaml:"program-count"`     // 节目数量
+	GameSystemCount int    `yaml:"game-system-count"` // 游戏系统数量
+	TrailerCount    int    `yaml:"trailer-count"`     // 预告片数量
+	SongCount       int    `yaml:"song-count"`        // 歌曲数量
+	AlbumCount      int    `yaml:"album-count"`       // 专辑数量
+	MusicVideoCount int    `yaml:"music-video-count"` // 音乐视频数量
+	BoxSetCount     int    `yaml:"box-set-count"`     // 合集数量
+	BookCount       int    `yaml:"book-count"`        // 书籍数量
+	ItemCount       int    `yaml:"item-count"`        // 总项目数量
 }
 
 // Init 配置初始化
@@ -212,11 +238,34 @@ func (ic *ItemsCountsConfig) Init() error {
 		logs.Success("ItemsCounts 配置: 修改模式，系数 = %.2f", ic.Multiplier)
 	}
 
-	// 自定义模式下记录日志
+	// 自定义模式下初始化媒体库映射表
 	if ic.Mode == "custom" {
-		logs.Success("ItemsCounts 配置: 自定义模式，电影=%d, 剧集=%d, 总计=%d",
+		ic.libraryCountsMap = make(map[string]*LibraryCount)
+		for _, lc := range ic.LibraryCounts {
+			if lc.LibraryID == "" {
+				logs.Warn("跳过无效的媒体库配置（缺少 library-id）")
+				continue
+			}
+			ic.libraryCountsMap[lc.LibraryID] = lc
+			libName := lc.Name
+			if libName == "" {
+				libName = lc.LibraryID
+			}
+			logs.Success("ItemsCounts 媒体库映射: [%s] 电影=%d, 剧集=%d, 总计=%d",
+				libName, lc.MovieCount, lc.SeriesCount, lc.ItemCount)
+		}
+		logs.Success("ItemsCounts 配置: 自定义模式，全局默认 - 电影=%d, 剧集=%d, 总计=%d",
 			ic.MovieCount, ic.SeriesCount, ic.ItemCount)
+		logs.Success("ItemsCounts 配置: 已加载 %d 个媒体库自定义配置", len(ic.libraryCountsMap))
 	}
 
 	return nil
+}
+
+// GetLibraryCounts 根据媒体库ID获取对应的统计配置，如果不存在则返回nil
+func (ic *ItemsCountsConfig) GetLibraryCounts(libraryID string) *LibraryCount {
+	if ic.libraryCountsMap == nil {
+		return nil
+	}
+	return ic.libraryCountsMap[libraryID]
 }

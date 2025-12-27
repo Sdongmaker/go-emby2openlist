@@ -46,7 +46,8 @@ emby:
     mode: origin
     # 修改模式参数（仅在 mode=modify 时生效）
     multiplier: 2.0                              # 统计数量的乘数系数（例如：2.0 表示所有数量翻倍）
-    # 自定义模式参数（仅在 mode=custom 时生效）
+    # 自定义模式 - 全局默认值（仅在 mode=custom 时生效）
+    # 当请求没有指定媒体库ID时使用这些值
     movie-count: 1000                            # 电影数量
     series-count: 500                            # 剧集数量
     episode-count: 5000                          # 剧集集数
@@ -61,6 +62,41 @@ emby:
     box-set-count: 20                            # 合集数量
     book-count: 0                                # 书籍数量
     item-count: 8000                             # 总项目数量
+    # 媒体库级别的自定义统计（优先级高于全局默认值）
+    # 通过媒体库ID（ParentId）精确控制每个库的统计数量
+    # 获取媒体库ID方法：在 Emby 客户端访问具体媒体库时，查看网络请求中的 ParentId 参数
+    library-counts:
+      - library-id: "abc123def456"               # 电影库A的ID
+        name: "电影库A"                          # 名称（可选，仅用于配置可读性）
+        movie-count: 500                         # 该库显示500部电影
+        series-count: 0
+        episode-count: 0
+        item-count: 500
+      - library-id: "def456ghi789"               # 电影库B的ID
+        name: "电影库B"
+        movie-count: 300                         # 该库显示300部电影
+        series-count: 0
+        episode-count: 0
+        item-count: 300
+      - library-id: "ghi789jkl012"               # 电影库C的ID
+        name: "电影库C"
+        movie-count: 200
+        series-count: 0
+        episode-count: 0
+        item-count: 200
+      - library-id: "jkl012mno345"               # 剧集库1的ID
+        name: "剧集库1"
+        movie-count: 0
+        series-count: 150                        # 该库显示150个剧集
+        episode-count: 1500                      # 共1500集
+        item-count: 1650
+      - library-id: "mno345pqr678"               # 剧集库2的ID
+        name: "剧集库2"
+        movie-count: 0
+        series-count: 120
+        episode-count: 1200
+        item-count: 1320
+      # ... 可以继续添加更多媒体库配置
 
 # openlist 访问配置
 openlist:

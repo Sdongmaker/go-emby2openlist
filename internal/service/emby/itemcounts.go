@@ -41,7 +41,45 @@ func HandleItemsCounts(c *gin.Context) {
 
 	// 自定义模式：返回配置的自定义值
 	if cfg.Mode == "custom" {
-		logs.Info("[ItemsCounts] 返回自定义统计数据")
+		// 检查是否请求特定媒体库的统计（通过 ParentId 参数）
+		parentID := c.Query("ParentId")
+		if parentID != "" {
+			// 尝试获取该媒体库的自定义配置
+			libCounts := cfg.GetLibraryCounts(parentID)
+			if libCounts != nil {
+				// 返回该媒体库的自定义统计
+				libName := libCounts.Name
+				if libName == "" {
+					libName = parentID
+				}
+				logs.Info("[ItemsCounts] 返回媒体库 [%s] 的自定义统计", libName)
+				counts := ItemCounts{
+					MovieCount:      libCounts.MovieCount,
+					SeriesCount:     libCounts.SeriesCount,
+					EpisodeCount:    libCounts.EpisodeCount,
+					GameCount:       libCounts.GameCount,
+					ArtistCount:     libCounts.ArtistCount,
+					ProgramCount:    libCounts.ProgramCount,
+					GameSystemCount: libCounts.GameSystemCount,
+					TrailerCount:    libCounts.TrailerCount,
+					SongCount:       libCounts.SongCount,
+					AlbumCount:      libCounts.AlbumCount,
+					MusicVideoCount: libCounts.MusicVideoCount,
+					BoxSetCount:     libCounts.BoxSetCount,
+					BookCount:       libCounts.BookCount,
+					ItemCount:       libCounts.ItemCount,
+				}
+				c.JSON(http.StatusOK, counts)
+				return
+			}
+			// 没有配置该媒体库，记录警告并代理回源
+			logs.Warn("[ItemsCounts] 媒体库 ID [%s] 未在配置中，代理回源", parentID)
+			ProxyOrigin(c)
+			return
+		}
+
+		// 没有 ParentId 参数，返回全局默认值
+		logs.Info("[ItemsCounts] 返回全局默认自定义统计数据")
 		counts := ItemCounts{
 			MovieCount:      cfg.MovieCount,
 			SeriesCount:     cfg.SeriesCount,
