@@ -250,6 +250,10 @@ func ProxyLatestItems(c *gin.Context) {
 		return
 	}
 
+	// 调试日志：检查响应类型和内容
+	logs.Info("[ProxyLatestItems] 响应类型: %v, 是否为空: %v, ParentId: %s",
+		resJson.Type(), resJson.Empty(), c.Query("ParentId"))
+
 	// 预响应请求
 	defer func() {
 		https.CloneHeader(c.Writer, resp.Header)
@@ -258,6 +262,8 @@ func ProxyLatestItems(c *gin.Context) {
 
 	// 遍历 MediaSources 解码 path
 	if resJson.Type() != jsons.JsonTypeArr {
+		logs.Warn("[ProxyLatestItems] 响应不是数组类型，ParentId: %s, 类型: %v",
+			c.Query("ParentId"), resJson.Type())
 		return
 	}
 	resJson.RangeArr(func(_ int, item *jsons.Item) error {
