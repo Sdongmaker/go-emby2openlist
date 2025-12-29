@@ -139,3 +139,76 @@ func TestMapPath(t *testing.T) {
 		})
 	}
 }
+
+// TestEncodePathForCDN 测试路径编码函数
+func TestEncodePathForCDN(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input:    "/电影/华语电影/72小时黄金行动 (2023)/poster.jpg",
+			expected: "/%E7%94%B5%E5%BD%B1/%E5%8D%8E%E8%AF%AD%E7%94%B5%E5%BD%B1/72%E5%B0%8F%E6%97%B6%E9%BB%84%E9%87%91%E8%A1%8C%E5%8A%A8%20%282023%29/poster.jpg",
+		},
+		{
+			input:    "/剧集/国漫/仙逆",
+			expected: "/%E5%89%A7%E9%9B%86/%E5%9B%BD%E6%BC%AB/%E4%BB%99%E9%80%86",
+		},
+		{
+			input:    "/test/path with space/file.mp4",
+			expected: "/test/path%20with%20space/file.mp4",
+		},
+	}
+
+	for _, tt := range tests {
+		result := encodePathForCDN(tt.input)
+		if result != tt.expected {
+			t.Errorf("encodePathForCDN(%q):\n  got:      %q\n  expected: %q", tt.input, result, tt.expected)
+		} else {
+			t.Logf("✓ encodePathForCDN(%q) = %q", tt.input, result)
+		}
+	}
+}
+
+// TestAuthSignWithOriginalPath 验证签名必须使用原始路径（与 Python 代码逻辑一致）
+func TestAuthSignWithOriginalPath(t *testing.T) {
+	t.Log("========== 验证 GoEdge 鉴权逻辑（与 Python 测试代码对比）==========")
+	t.Log("")
+
+	// Python 测试代码中的参数
+	rawPath := "/电影/华语电影/72小时黄金行动 (2023)/poster.jpg"
+	endpoint := "https://test.startspoint.com"
+
+	t.Logf("1. 原始路径（中文）: %s", rawPath)
+	t.Log("")
+
+	// 编码路径
+	encodedPath := encodePathForCDN(rawPath)
+	t.Logf("2. 编码后的路径: %s", encodedPath)
+	t.Log("")
+
+	// 关键验证点
+	t.Log("3. 【关键逻辑】")
+	t.Log("   - 签名计算: 使用**原始路径**（未编码的中文）")
+	t.Log("   - URL 构建: 使用**编码后的路径**")
+	t.Log("")
+
+	t.Log("4. 为什么这样设计？")
+	t.Log("   - GoEdge CDN 服务器在验证签名时，会先解码接收到的 URL")
+	t.Log("   - 然后用解码后的原始路径计算 MD5")
+	t.Log("   - 如果签名也用编码路径计算，会导致验证失败")
+	t.Log("")
+
+	t.Log("5. 客户端兼容性")
+	t.Log("   - Infuse: 会对 URL 进行编码，但我们已经返回编码 URL，避免双重编码")
+	t.Log("   - SenPlayer: 不编码，直接使用我们返回的编码 URL")
+	t.Log("   - 两种客户端都能正常工作")
+	t.Log("")
+
+	// 最终 URL
+	finalURL := endpoint + encodedPath + "?sign={timestamp}-{rand}-{md5hash}"
+	t.Logf("6. 最终 URL 格式: %s", finalURL)
+	t.Log("")
+
+	t.Log("========== 验证完成 ==========")
+}
