@@ -6,7 +6,9 @@
       "Bash(git push:*)",
       "Bash(find:*)",
       "Bash(go test:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }
